@@ -1,14 +1,14 @@
-# PACT (Planetary Atmosphere Chemistry and Temperature) #
+### PACT (Planetary Atmosphere Chemistry and Temperature) #
 
   Fortran code that computes self-consistently the 1D vertical distribution of
    - temperature                         (through radiative-convective equilibrium)
    - disequilibrium chemical composition (including thermochemical kinetics, photochemistry, and vertical mixing)
   in a planetary atmosphere
 
-# If you use PACT for your work, I would appreciate if you cite the paper Agundez 2025, A&A, in press
-# Inquiries can be sent to marcelino.agundez@csic.es
+### If you use PACT for your work, I would appreciate if you cite the paper Agundez 2025, A&A, in press
+### Inquiries can be sent to marcelino.agundez@csic.es
 
-# Compilation:
+### Compilation:
 
   Download and uncompress the zip file. This will create three directories:
 
@@ -30,8 +30,9 @@ $ make
   It is convenient to move the binary file to the bin folder of your system where binaries are located.
   This allows you to run the code simply typing `pact` in any folder without the need to duplicate binaries.
 
-# Usage:
+### Usage:
 
+  Download the directory `data` as a compressed file from [here](https://saco.csic.es/s/TsR67qdyPziEzXL) and put it in the main `data` folder.
   In the directory `data` you have sub-directories with different type of data.
   Most of these data are common to different PACT models and thus are stored once to avoid file duplication.
 
