@@ -12,16 +12,14 @@
 
 ### Compilation:
 
-  Download and uncompress the zip file. This will create three directories:
+  Download and uncompress the zip file. This will create two directories:
 
    - `src`
-   - `data`
    - `examples`
 
   You need to have gfortran installed in your system. Compilation has been tested with gfortran.
   Other fortran compilers such as ifort may work but they have not been tested.
   To compile simply type:
-
 
 `$ cd src`
 
