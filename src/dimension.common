@@ -1,0 +1,51 @@
+
+c    --------------------------------------------------------------------------
+c
+c      Array sizes
+c
+       integer nmaxmodel,nmaxcharfile,nmaxspec,nmaxspec_ktab,
+     # nmaxlenspec,nmaxelem,nmaxelemxs,nmaxreac,nmaxlenreac,
+     # nmaxcharstring,nmaxcondensed,nmaxeqt,nmaxwave,nmaxz,nmaxreag,
+     # nmaxprod,nmaxrs,nmaxzs,nmaxlj,nmaxpo,nmaxnzjac,nmaxwlth,nmaxxy,
+     # nmaxphotoreac,nmaxps,nmaxmreac,nmaxmcoll,nmaxlong,
+     # nmaxphotochannel,nmaxtemp_therm,nmaxref,nmaxcia,nmaxbigit,
+     # nmaxp_ktab,nmaxt_ktab,nmaxg
+
+       parameter(nmaxmodel=1000)                   ! Maximum number of models requested in pact.inp
+       parameter(nmaxcharfile=80)                  ! Maximum number of characters for input/output files names
+       parameter(nmaxspec=200)                     ! Maximum number of species
+       parameter(nmaxspec_ktab=56)                 ! Maximum number of species in k-table grid
+       parameter(nmaxlenspec=15)                   ! Maximum number of characters of species name
+       parameter(nmaxelem=72)                      ! Maximum number of elements
+       parameter(nmaxelemxs=10)                    ! Maximum number of different elements in one species
+       parameter(nmaxreac=10000)                   ! Maximum number of reaction files
+       parameter(nmaxlenreac=50)                   ! Maximum number of characters of reaction
+       parameter(nmaxcharstring=150)               ! Maximum number of characters for string of characters
+       parameter(nmaxcondensed=20)                 ! Maximum number of condensed species
+       parameter(nmaxeqt=nmaxelem+nmaxcondensed+2) ! Maximum number of Newton-Raphson equations to solve chemical equilibrium
+       parameter(nmaxwave=456)                     ! Maximum number of wavenumber intervals in ktable method
+       parameter(nmaxz=200)                        ! Maximum number of heights
+       parameter(nmaxreag=5)                       ! Maximum number of reagents per reaction
+       parameter(nmaxprod=5)                       ! Maximum number of products per reaction
+       parameter(nmaxrs=2500)                      ! Maximum number of reactions involving a given species
+       parameter(nmaxzs=nmaxz*nmaxspec)            ! Maximum number of y_i^j and equations
+       parameter(nmaxlj=52)                        ! Maximum number of species with known Lennard-Jones parameters
+       parameter(nmaxpo=43)                        ! Maximum number of species with known polarizability
+       parameter(nmaxnzjac=                        ! Maximum number of non null terms in full (nz*nspec) jacobian
+     #  nmaxspec*(nmaxz*(nmaxspec+2)-2))
+       parameter(nmaxwlth=1000)                    ! Maximum number of wavelegth points
+       parameter(nmaxxy=100000)                    ! Maximum number of (x,y) points to read from various files
+       parameter(nmaxphotoreac=300)                ! Maximum number of cross section photo processes
+       parameter(nmaxps=200)                       ! Maximum number of photo reactions involving a given species
+       parameter(nmaxmreac=1000)                   ! Maximum number of collisional reactions
+       parameter(nmaxmcoll=8)                      ! Maximum number of colliders with known enhanced efficiencies
+       parameter(nmaxlong=500)                     ! Maximum number of longitudes in grid
+       parameter(nmaxphotochannel=10)              ! Maximum number of photochemical channels per species
+       parameter(nmaxtemp_therm=10)                ! Maximum number of temperature ranges for NASA polynomials
+       parameter(nmaxref=10)                       ! Maximum number of text lines for line list reference
+       parameter(nmaxcia=30)                       ! Maximum number of CIA data among two collision partners
+       parameter(nmaxbigit=20)                     ! Maximum number of iterations for big loop of temperature computation
+       parameter(nmaxp_ktab=10)                    ! Maximum number of pressures in k-table grid
+       parameter(nmaxt_ktab=20)                    ! Maximum number of temperatures in k-table grid
+       parameter(nmaxg=36)                         ! Gaussian-Legendre quadrature points
+

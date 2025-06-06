@@ -1,0 +1,33 @@
+
+c    --------------------------------------------------------------------------
+c
+c      Chemical equilibrium parameters
+c
+       integer neqt,npilag
+       real*8 ncea(nmaxspec+4),nceamax(nmaxspec),nceatot,
+     # mupot(nmaxspec),tce,pce,b0(nmaxeqt),b0max,b0min,pilag(nmaxeqt-1),
+     # dlnn,dnc(nmaxspec)
+       logical tflag(nmaxspec),converge_gibbs
+
+c      neqt:          number of conservation equations (nelem or nelem+1 if ionic species)
+c      npilag:        number of pi Lagrange multipliers
+c      ncea:          species chemical equilibrium abundance                  [mol/g mixture]
+c      nceamax:       maximum species abundance                               [mol/g mixture]
+c      nceatot:       total abundance of all species                          [mol/g mixture]
+c      mupot:         chemical potential of each species divided by RT
+c      tce:           gas kinetic temperature for chemical equilibrium        [K]
+c      pce:           gas pressure for chemical equilibrium                   [bar]
+c      b0:            conservation term for each element                      [mol/g mixture]
+c                   + conservation term for charge if ions present
+c      b0max:         maximum b0 among all included elements                  [mol/g mixture]
+c      b0min:         minimum b0 among all included elements                  [mol/g mixture]
+c      pilag:         pi lagrange multiplier
+c      dlnn:          variation of Ln(abuntot) among succesive iterations
+c      dnc:           variation of abun(condensed) among succesive iterations [mol/g mixture]
+c      tflag:         true if NASA polynomials used outside valid temperature range
+c      converge_gibbs:minimization of Gibbs energy converged or not
+
+       common/ichemeq/neqt,npilag
+       common/rchemeq/ncea,nceamax,nceatot,mupot,tce,pce,b0,b0max,b0min,
+     # pilag,dlnn,dnc
+       common/lchemeq/tflag,converge_gibbs

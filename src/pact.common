@@ -1,0 +1,551 @@
+c
+       implicit none
+c
+c      Include array dimensions
+c
+       include 'dimension.common'
+
+c    --------------------------------------------------------------------------
+c
+c      Physical constants
+c
+       real*8 kboltz,pi,amu,ggravity,day,year,rearth,mearth,au,rsun,
+     # clight,hplanck,amagat,echarge,emass,sigmasb,navg
+
+       parameter(kboltz=1.380649d-16)            ! Boltzmann constant           [erg/K]
+       parameter(pi=3.141592653589793d0)         ! pi number 
+       parameter(amu=1.66053906660d-24)          ! atomic mass unit             [g]
+       parameter(ggravity=6.67430d-8)            ! gravitational constant       [cm3 g-1 s-2]
+       parameter(day=8.64d4)                     ! day                          [s]
+       parameter(year=3.15576d7)                 ! year                         [s]
+       parameter(rearth=6.378137d8)              ! mean Earth radius            [cm]
+       parameter(mearth=5.9723d27)               ! Earth mass                   [g]
+       parameter(au=1.495978707d13)              ! astronomical unit            [cm]
+       parameter(rsun=6.955d10)                  ! Sun radius                   [cm]
+       parameter(clight=2.99792458d10)           ! speed of light               [cm s-1]
+       parameter(hplanck=6.62607015d-27)         ! Planck constant              [erg s]
+       parameter(amagat=2.6867774d19)            ! Amagat unit                  [cm-3]
+       parameter(echarge=4.80320425d-10)         ! electron charge              [statC]
+       parameter(emass=9.1093837015d-28)         ! electron mass                [g]
+       parameter(sigmasb=5.670374419d-5)         ! Stefan-Boltzmann constant    [erg s-1 cm-2 K-4]
+       parameter(navg=6.02214076d23)             ! Avogadro number              [mol-1]
+
+c    --------------------------------------------------------------------------
+c
+c      Numerical and miscellaneous parameters
+c
+       real*8 tiny,huge,abunmin,ftstep,cn_theta,sectmin
+
+       parameter(tiny=1.0d-100)                  ! tiny number
+       parameter(huge=1.0d+100)                  ! huge number
+       parameter(abunmin=1.0d-99)                ! minimum mole fraction to write out
+       parameter(ftstep=10.0d0)                  ! minimum time step factor
+       parameter(cn_theta=0.501d0)               ! Crank-Nicholson parameter
+       parameter(sectmin=1.0d-99)                ! minimum cross section        [cm^2]
+
+       integer iyea0,imon0,iday0,ihou0,imin0,isec0
+       real*8 cpu0,cpu
+
+c      iyea0:     initial CPU year
+c      imon0:     initial CPU month
+c      iday0:     initial CPU day
+c      ihou0:     initial CPU hour
+c      imin0      initial CPU minute
+c      isec0:     initial CPU second
+c      cpu0:      initial CPU time [s]
+c      cpu:       actual CPU time [s]
+
+       common/inumeric/iyea0,imon0,iday0,ihou0,imin0,isec0
+       common/rnumeric/cpu0,cpu
+
+c    --------------------------------------------------------------------------
+c
+c      Model parameters
+c
+       logical ion,solvitemp,self_temp,diffusion,photochem,write_supp,
+     # initial
+
+c      ion:        .true./.false. = (there are / there are not) charged species
+c      solvitemp:  .true./.false. = (solve    / get-from-file) initial temperature
+c      self_temp:  .true./.false. = (activate / deactivate) self-consistent temperature
+c      diffusion:  .true./.false. = (activate / deactivate) diffusion
+c      photochem:  .true./.false. = (activate / deactivate) photochemistry
+c      write_supp: .true./.false. = (write/do-not-write) output supplementary files
+c      initial:    .true./.false. = (time = 0 / time > 0)
+
+       common/lmodelparam/ion,solvitemp,self_temp,diffusion,photochem,
+     # write_supp,initial
+
+c    --------------------------------------------------------------------------
+c
+c      Physical parameters
+c
+       integer nz
+       real*8 mplanet,rplanet,pplanet,tintplanet,albedoplanet,emplanet,
+     # fhrd,tplanet,tplanet_th,dist,zenithangle,rstar,tstar,pmax,pmin,
+     # pressure(nmaxz),z(nmaxz),tk(nmaxz),density(nmaxz),deltaz(nmaxz),
+     # ggrav(nmaxz),plev(nmaxz+1),apmass,cplayer(nmaxz)
+       logical convect(nmaxz),detached_convect
+
+c      nz:               number of height points
+c                                                             on input   --> internally
+c      mplanet:          planet mass                               [M_Earth]  --> [g]
+c      rplanet:          planet radius                             [R_Earth]  --> [cm]
+c      pplanet:          reference pressure at planet radius       [bar]      --> [dyn cm-2]
+c      tintplanet:       planet internal temperature                              [K]
+c      albedoplanet:     albedo of planet surface/bottom level (wavelength independent) 
+c      emplanet:         emissivity of planet surface/bottom level (wavelength independent) 
+c      fhrd:             dayside-nightside heat redistribution factor
+c      tplanet:          planet effective temperature                             [K]
+c      tplanet_th:       theoretical planet equilibrium temperature               [K]
+c      dist:             star-planet distance                      [au]       --> [cm] 
+c      zenithangle:      zenith angle                              [deg]      --> [rad] 
+c      rstar:            stellar radius                            [R_Sun]    --> [cm] 
+c      tstar:            stellar effective temperature                            [K] 
+c      pmax:             pressure at bottom layer                  [bar]      --> [dyn cm-2]
+c      pmin:             pressure at top layer                     [bar]      --> [dyn cm-2]
+c      pressure:         pressure of each layer                                   [dyn cm-2]
+c      z:                height                                    [km]       --> [cm]
+c      tk:               gas kinetic temperature                                  [K]         
+c      density:          volume density of particles of each layer                [cm-3]
+c      deltaz:           vertical length of each layer                            [cm]
+c      ggrav:            gravity in each layer                                    [cm s-2]
+c      plev:             pressure at each level (interface between layers)        [dyn cm-2]
+c      apmass:           average particle mass in planet's atmosphere             [g]
+c      cplayer:          heat capacity at constant pressure in each layer         [erg g-1 K-1]
+c      convect:          .false./.true. = (radiative/convective) layer
+c      detached_convect: .true. if detached convective zone
+
+       common/iphys/nz
+       common/rphys/mplanet,rplanet,pplanet,tintplanet,albedoplanet,
+     # emplanet,fhrd,tplanet,tplanet_th,dist,zenithangle,rstar,tstar,
+     # pmax,pmin,pressure,z,tk,density,deltaz,ggrav,plev,apmass,cplayer
+       common/lphys/convect,detached_convect
+
+c    --------------------------------------------------------------------------
+c
+c      Elements parameters
+c
+       integer nelem
+       real*8 elfab(nmaxelem),mat(nmaxelem)
+       character*2 elem(nmaxelem)
+
+c      nelem:    number of elements
+c      elfab:    input elemental abundance                                [relative abundance]
+c      mat:      atomic mass of each element                              [amu]
+c      elem:     element name
+
+       common/ielem/nelem
+       common/relem/elfab,mat
+       common/celem/elem
+
+c    --------------------------------------------------------------------------
+c
+c      Species parameters
+c
+       integer nspec,charge(nmaxspec),nattot(nmaxspec),
+     # nat(nmaxspec,nmaxelem),nelemspec(nmaxspec),id_electr,ngas,
+     # ncondensed,iabun
+       real*8 abun(nmaxspec,nmaxz),mspec(nmaxspec)
+       character*(nmaxlenspec) spec(nmaxspec)
+       logical condensed(nmaxspec)
+
+c      nspec:       number of species 
+c      charge:      species electrostatic charge                          [electron charge] 
+c      nattot:      total number of atoms for each species 
+c      nat(i,j):    number of atoms of element j in species i 
+c      nelemspec:   number of elements each species 
+c      id_electr:   species identifier for electron 
+c      ngas:        number of gas phase species 
+c      ncondensed:  number of condensed species 
+c      iabun:       initial abundances; =0 chemical equilibrium, =1 in .spec file
+c      abun:        species abundance at each height                      [mole fraction]
+c      mspec:       species mass                                          [g]
+c      spec:        species name
+c      condensed:   true = condensed species, false = only gas species
+
+       common/ispec/nspec,charge,nattot,nat,nelemspec,id_electr,ngas,
+     # ncondensed,iabun
+       common/rspec/abun,mspec
+       common/cspec/spec
+       common/lspec/condensed
+
+c    --------------------------------------------------------------------------
+c
+c      NASA polynomial parameters
+c
+       integer type_therm(nmaxspec),natherm(nmaxspec),
+     # ntemp_therm(nmaxspec)
+       real*8 atherm(nmaxspec,9,nmaxtemp_therm),
+     # temp_therm(nmaxspec,nmaxtemp_therm+1)
+
+c      type_therm:  type of NASA polynomial therm data for each species
+c      natherm:     number of NASA polynomial coefficients, usually 7 or 9
+c      ntemp_therm: number of temperature ranges of NASA polynomials
+c      atherm:      NASA polynomial coefficients for each species
+c      temp_therm:  temperature at edges of temperature ranges for NASA polynomials
+
+       common/itherm/type_therm,natherm,ntemp_therm
+       common/rtherm/atherm,temp_therm
+
+c    --------------------------------------------------------------------------
+c
+c      Radiative transfer parameters
+c
+       integer nwave
+       real*8 wavemin,wavemax,respow,wave(nmaxwave),wave_l(nmaxwave),
+     # wave_u(nmaxwave),dwave(nmaxwave),fstar(nmaxwave),
+     # kabs(nmaxwave,nmaxz),kscat(nmaxwave,nmaxz),walb(nmaxwave,nmaxz),
+     # gscat(nmaxwave,nmaxz),fup_st(nmaxwave,nmaxz+1),
+     # fdo_st(nmaxwave,nmaxz+1),fup_ir(nmaxwave,nmaxz+1),
+     # fdo_ir(nmaxwave,nmaxz+1),fup(nmaxz+1),fdown(nmaxz+1),
+     # fnet(nmaxz+1)
+
+c      nwave:        number of wavenumber intervals of spectrum
+c      wavemin:      lower wavenumber edge of spectral grid                          [cm-1]
+c      wavemax:      upper wavenumber edge of spectral grid                          [cm-1]
+c      respow:       spectral resolution R = lambda / Delta lambda
+c      wave:         center wavenumber of each spectral bin                          [cm-1]
+c      wave_l:       lower wavenumber of each spectral bin                           [cm-1]
+c      wave_u:       upper wavenumber of each spectral bin                           [cm-1]
+c      dwave:        width of each spectral bin                                      [cm-1]
+c      fstar:        stellar flux at planet's distance (top of the atmosphere)       [erg s-1 cm-2 Hz-1]
+c      kabs:         absorption coefficient                                          [cm-1]
+c      kscat:        scattering coefficient                                          [cm-1]
+c      walb:         single scattering albedo
+c      gscat:        scattering assymetry parameter
+c      fup_st:       upward flux from stellar component                              [erg s-1 cm-2 Hz-1]
+c      fdo_st:       downward flux from stellar component                            [erg s-1 cm-2 Hz-1]
+c      fup_ir:       upward flux from infrared component (planet thermal emission)   [erg s-1 cm-2 Hz-1]
+c      fdo_ir:       downward flux from infrared component (planet thermal emission) [erg s-1 cm-2 Hz-1]
+c      fup:          upward bolometric flux                                          [erg s-1 cm-2]
+c      fdown:        downward bolometric flux                                        [erg s-1 cm-2]
+c      fnet:         net (upward-downward) bolometric flux                           [erg s-1 cm-2]
+
+       common/iradtrans/nwave
+       common/rradtrans/wavemin,wavemax,respow,wave,wave_l,wave_u,dwave,
+     # fstar,kabs,kscat,walb,gscat,fup_st,fdo_st,fup_ir,fdo_ir,fup,
+     # fdown,fnet
+
+c    --------------------------------------------------------------------------
+c
+c      CIA (collision-induced absorption) parameters
+c
+       integer ncia,ntemp_ciafile(nmaxcia),idspec1_cia(nmaxcia),
+     # idspec2_cia(nmaxcia)
+       character*(nmaxcharstring) ciafile(nmaxcia)
+
+c      ncia:             number of CIA data among two collision partners
+c      ntemp_ciafile:    number of temperatures in CIA data file included in PAT
+c      idspec1_cia:      species identifier for 1st collision partner among species included in PAT
+c      idspec2_cia:      species identifier for 2nd collision partner among species included in PAT
+c      ciafile:          CIA file name for data included in PAT
+
+       common/iciadata/ncia,ntemp_ciafile,idspec1_cia,idspec2_cia
+       common/cciadata/ciafile
+
+c    --------------------------------------------------------------------------
+c
+c      k-table parameters
+c
+       integer np_ktab,nt_ktab,nspec_ktab,idspec_ktab(nmaxspec_ktab)
+       real*8 p_ktab(nmaxp_ktab),t_ktab(nmaxt_ktab),
+     # kcoeff(nmaxspec_ktab,nmaxp_ktab,nmaxt_ktab,nmaxwave,nmaxg),
+     # p_tauir1(nmaxspec_ktab+3,nmaxwave)
+       character*(nmaxlenspec) spec_ktab(nmaxspec_ktab)
+
+c      np_ktab:          number of pressures in k-tables
+c      nt_ktab:          number of temperatures in k-tables
+c      nspec_ktab:       number of species in k-tables
+c      idspec_ktab:      ktable species identifier among all species included
+c                                                             on input   --> internally
+c      p_ktab:           ktable grid pressure                 [bar]      --> [dyn cm-2]
+c      t_ktab:           ktable grid temperature                             [K]
+c      kcoeff:           k coefficients at each of the nmaxg (36) g points   log10[cm-2]
+c                        given by the Gaussian-Legendre quadrature
+c      p_tauir1:         pressure(tau=1) for each species and wavenumber     [dyn cm-2] 
+c      spec_ktab:        ktable species
+
+       common/iktab/np_ktab,nt_ktab,nspec_ktab,idspec_ktab
+       common/rktab/p_ktab,t_ktab,kcoeff,p_tauir1
+       common/cktab/spec_ktab
+
+c    --------------------------------------------------------------------------
+c
+c      Temperature computation
+c
+       integer bigit,jadiab
+       real*8 dtkmax,conv
+
+c      bigit:       number of iterations performed in big temperature loop
+c      jadiab:      layer below which atmosphere is convective
+c      dtkmax:      maximum temperature change between successive iterations [K] 
+c      conv:        convergence criterion on flux to compute temperature
+
+       common/itempit/bigit,jadiab
+       common/rtempit/dtkmax,conv
+
+c    --------------------------------------------------------------------------
+c
+c      Reaction parameters
+c
+       integer nreac,rtype(nmaxreac),nreag(nmaxreac),nprod(nmaxreac),
+     # idreag(nmaxreac,nmaxreag),idprod(nmaxreac,nmaxprod),
+     # natc(nmaxreac),idreac_rev(nmaxreac)
+       real*8 alpha(nmaxreac),beta(nmaxreac),gamma(nmaxreac),
+     # tkmin(nmaxreac),tkmax(nmaxreac),kerror(nmaxreac),
+     # krate(nmaxreac,nmaxz)
+       character*(nmaxlenreac) reac(nmaxreac)
+       character*(nmaxlenspec) reag(nmaxreac,nmaxreag),
+     # prod(nmaxreac,nmaxprod)
+       character*1024 comment(nmaxreac)
+
+c      nreac:     number of reactions used 
+c      rtype:     type of reaction 
+c      nreag:     number of reagents in each reaction 
+c      nprod:     number of products in each reaction 
+c      idreag:    species identifier of reagent 
+c      idprod:    species identifier of product 
+c      natc:      number of C atoms involved in reaction
+c      idreac_rev:identifier (for a reverse reaction) of forward reaction
+c      alpha:     alpha in rate coefficient expression 
+c      beta:      beta in rate coefficient expression 
+c      gamma:     gamma in rate coefficient expression 
+c      tkmin:     minimum tk at which the rate coefficient expression is valid 
+c      tkmax:     maximum tk at which the rate coefficient expression is valid 
+c      kerror:    uncertainty factor in the reaction rate coefficient expression
+c      krate:     reaction rate coefficient                        [cm6 s-1; cm3 s-1; or s-1] 
+c      reac:      reaction name
+c      reag:      reagent name 
+c      prod:      product name 
+c      comment:   comment on the reaction rate coefficient expression 
+
+       common/ireac/nreac,rtype,nreag,nprod,idreag,idprod,natc,
+     # idreac_rev
+       common/rreac/alpha,beta,gamma,tkmin,tkmax,kerror,krate
+       common/creac/reac,reag,prod,comment
+
+c    --------------------------------------------------------------------------
+c
+c      Collisional reaction parameters
+c
+       integer nmreac,idmreac(nmaxreac)
+       real*8 alphainf(nmaxmreac),betainf(nmaxmreac),
+     # gammainf(nmaxmreac),afcent(nmaxmreac),bfcent(nmaxmreac),
+     # tkmininf(nmaxmreac),tkmaxinf(nmaxmreac),tkminfc(nmaxmreac),
+     # tkmaxfc(nmaxmreac)
+       character*(nmaxlenspec) mcoll(nmaxmreac)
+
+c      nmreac:   number of collisional reactions 
+c      idmreac:  reaction identifier within the group of collisional reactions 
+c      alphainf: alpha for k_infinite 
+c      betainf:  beta for k_infinite 
+c      gammainf: gamma for k_infinite 
+c      afcent:   A parameter to describe Fc as a function of temperature: Fc = A + B * T
+c      bfcent:   B parameter to describe Fc as a function of temperature: Fc = A + B * T
+c      tkmininf: minimum tk at which k_infinite expression is valid 
+c      tkmaxinf: maximum tk at which k_infinite expression is valid 
+c      tkminfc:  minimum tk at which Fc expression is valid 
+c      tkmaxfc:  maximum tk at which Fc expression is valid 
+c      mcoll:    M collider (if known)
+
+       common/icollreac/nmreac,idmreac
+       common/rcollreac/alphainf,betainf,gammainf,afcent,bfcent,
+     # tkmininf,tkmaxinf,tkminfc,tkmaxfc
+       common/ccollreac/mcoll
+
+c    --------------------------------------------------------------------------
+c
+c      Chemical production and loss parameters
+c
+       integer nterm(nmaxspec),idterm(nmaxspec,nmaxrs),
+     # sterm(nmaxspec,nmaxrs),fterm(nmaxspec,nmaxrs),
+     # nphototerm(nmaxspec),idphototerm(nmaxspec,nmaxps),
+     # sphototerm(nmaxspec,nmaxps),fphototerm(nmaxspec,nmaxps)
+
+c      nterm:      number of terms in rate equation of each species
+c      idterm:     index identifying the reaction associated to each term
+c      sterm:      sign (+/-) of the term in the rate equation
+c      fterm:      factor to multiply each term in rate equation
+c                     if a species appears e.g. twice as a reagent or product
+c      nphototerm: number of photo-terms in rate equation of each species
+c      idphototerm:index identifying the photo reaction associated to each term
+c      sphototerm: sign (+/-) of the photo-term in the rate equation
+c      fphototerm: factor to multiply each photo-erm in rate equation
+
+       common/icploss/nterm,idterm,sterm,fterm,nphototerm,idphototerm,
+     # sphototerm,fphototerm
+
+c    --------------------------------------------------------------------------
+c
+c      Diffusion processes
+c
+       real*8 kdif(nmaxz),ddif(nmaxspec,nmaxz)
+
+c      kdif:      Eddy diffusion coefficient K                           [cm2 s-1] 
+c      ddif:      molecular diffusion coefficient D                      [cm2 s-1] 
+
+       common/rdiff/kdif,ddif
+
+c    --------------------------------------------------------------------------
+c
+c      Photon processes
+c
+       integer nwlth,nphotoreac,nphotospec,
+     # nphotoprod(nmaxphotoreac),idphotoreag(nmaxphotoreac),
+     # idphotoprod(nmaxphotoreac,nmaxprod),idphotospec(nmaxspec)
+       real*8 wlthmin,wlthmax,wlth(nmaxwlth),fphot(nmaxwlth),
+     # csphot(nmaxphotoreac,nmaxwlth),
+     # csphotabs(nmaxspec,nmaxwlth),jphot(nmaxphotoreac,nmaxz),
+     # p_tauuv1(nmaxspec+3,nmaxwlth),jerror(nmaxphotoreac)
+       character*50 photoreac(nmaxphotoreac)
+       character*(nmaxlenspec) photoreag(nmaxphotoreac),
+     # photoprod(nmaxphotoreac,nmaxprod)
+
+c      nwlth:         number of wavelengths 
+c      nphotoreac:    number of photo cross section processes 
+c      nphotospec:    number of absorbing photo species 
+c      nphotoprod:    number of products in each photo reaction 
+c      idphotoreag:   species identifier of photo reaction reagent 
+c      idphotoprod:   species identifier of photo reaction product 
+c      idphotospec:   species identifier of photospecies 
+c      wlthmin:       lower wavelength limit                              [nm] 
+c      wlthmax:       upper wavelength limit                              [nm] 
+c      wlth:          wavelength grid                                     [nm] 
+c      fphot:         photon flux on top of the atmosphere                [photon s-1 cm-2 nm-1] 
+c      csphot:        photoreaction cross section                         [cm2] 
+c      csphot:        photoabsortion cross section                        [cm2] 
+c      jphot:         photo rate                                          [s-1] 
+c      p_tauuv1:      pressure(tau=1) for each species and wavelength     [dyn cm-2] 
+c      jerror:        uncertainty factor in the photo reaction rate
+c      photoreac:     photo reaction name 
+c      photoreag:     reagent name 
+c      photoprod:     product name 
+
+       common/iphot/nwlth,nphotoreac,nphotospec,nphotoprod,
+     # idphotoreag,idphotoprod,idphotospec
+       common/rphot/wlthmin,wlthmax,wlth,fphot,csphot,csphotabs,
+     # jphot,p_tauuv1,jerror
+       common/cphot/photoreac,photoreag,photoprod
+
+c    --------------------------------------------------------------------------
+c
+c      Solution of continuity equation
+c
+       integer itime
+       real*8 f_conteq(nmaxspec,nmaxz),
+     # df_conteq(nmaxspec,nmaxz,nmaxspec),df_dif(nmaxspec,nmaxz),
+     # df_jm_dif(nmaxspec,nmaxz),df_jp_dif(nmaxspec,nmaxz),
+     # time,varabun,cdelem0(nmaxelem),cdtot0,elab0(nmaxelem,nmaxz)
+       logical steady
+
+c      f_conteq:  function f in continuity equation                   [cm-3 s-1]
+c                 f_i^j = P_i^j -n_i^j*L_i^j -div(flux_i^j)
+c      df_conteq: molar fraction derivative of f within height j      [cm-3 s-1]
+c                 d[f_i^j]/d(y_k^j)
+c      df_dif:    molar fraction derivative of f within same height   [cm-3 s-1]
+c                 d[f_i^j]/d(y_i^j)
+c      df_jm_dif: derivative of f with molar fraction in lower layer  [cm-3 s-1]
+c                 d[f_i^j]/d(y_i^j-1)
+c      df_jp_dif: derivative of f with molar fraction in upper layer  [cm-3 s-1]
+c                 d[f_i^j]/d(y_i^j+1)
+c      time:      integration time for time-dependent solution        [s]
+c      steady:    .true. if steady state reached for time-dependent solution
+c      varabun:   maximum mole fraction relative difference with respect to previous time
+c      cdelem0:   initial spherically averaged element column density [cm-2]
+c      cdtot0:    initial spherically averaged total particle column density [cm-2]
+c      elab0:     initial element abundance (as a sum of molar fractions) in each layer
+c      itime:     counter for integration times to write out results
+
+       common/iconteq/itime
+       common/rconteq/f_conteq,df_conteq,df_dif,df_jm_dif,df_jp_dif,
+     # time,varabun,cdelem0,cdtot0,elab0
+       common/lconteq/steady
+
+c    --------------------------------------------------------------------------
+c
+c      Solid body rotation parameters
+c
+       integer nperiod,nlong,ostat_sbr
+       real*8 windspeed,period,tin_sbr,long(nmaxlong),
+     # tk_grid(nmaxlong,nmaxz),longitude
+       logical sbrotation
+
+c      nperiod:   number of rotations periods to integrate
+c      nlong:     number of longitudes in grid (time steps per period to integrate)
+c      ostat_sbr: status identifier for output files
+c                 =0:initialize, =1:write results, =2: close files
+c      windspeed: equatorial wind velocity at 1 bar                   [cm s-1]
+c      period:    rotation period of the atmosphere                   [s]
+c      tin_sbr:   saved current time previous to call to DLSODEs      [s]
+c      long:      longitude grid                                      [rad]
+c      tk_grid:   temperature as a function of longitude and pressure [K]
+c      longitude: longitude at current time (0-2pi)                   [rad]
+c      sbrotation:.true. solid body rotating atmosphere
+
+       common/isolidbr/nperiod,nlong,ostat_sbr
+       common/rsolidbr/windspeed,period,tin_sbr,long,tk_grid,longitude
+       common/lsolidbr/sbrotation
+
+c    --------------------------------------------------------------------------
+c
+c      Input/Output files
+c
+       integer ncharmodel
+       character*(nmaxcharfile) inpfile,namemodel,specfile,
+     # reacfile,starfile,thermfile,eddyfile,initfile,lptfile
+       character*(nmaxcharstring) data_path,ktabledir,chemdir,photodir,
+     # stardir
+
+c      ncharmodel:   number of characters of the name of each model (inpfile without extension)
+c      inpfile:      input file for each model
+c      namemodel:    name of each model (inpfile without extension)
+c      specfile:     species file
+c      thermfile:    therm file
+c      reacfile:     reaction file
+c      starfile:     file with stellar spectrum
+c      thermfile:    therm file with NASA polynomial coefficients
+c      eddyfile:     eddy diffusion coefficient profile file
+c      initfile:     initial (z,p,T,composition) file
+c      lptfile:      solid body rotation: file with longitude-pressure-temperature structure
+c      data_path:    path to opacities data
+c      ktabledir:    directory with k tables
+c      chemdir:      directory with reaction network and therm file
+c      photodir:     directory with photo cross sections
+c      stardir:      directory with stellar spectra
+
+       common/iiounits/ncharmodel
+       common/ciounits/inpfile,namemodel,specfile,reacfile,starfile,
+     # thermfile,eddyfile,initfile,lptfile,data_path,ktabledir,chemdir,
+     # photodir,stardir
+
+c    --------------------------------------------------------------------------
+c
+c      Input/Output units
+c
+c      unit=5     ! standar fortran input unit (read from screen)
+c      unit=6     ! standar fortran output unit (write on screen)
+c                 ! replaced in the subroutines by *                   
+c      unit=1     ! input unit assigned to main input file of pact: 'pact.inp'
+c                 ! open during all the execution of PACT program
+c      unit=2     ! input unit assigned to:  - input file of each model
+c                   open and close           - species file
+c                                            - (z,p,T) file
+c                                            - reaction files
+c                                            - therm file
+c                                            - eddy diffusion coefficient profile file
+c                                            - star spectrum file
+c                                            - photo cross section info file
+c                                            - CIA files
+c                                            - k-table files
+c      unit=3     ! output unit assigned to: - computed (p,T) profile
+c                   open and close           - final (z,p,T,q_i) structure
+c                                            - reactions used file
+c                                            - rate coefficient warnings file
+c                   input unit assigned to:  - photo cross section files
+c                                            - abundance profile files
+c      unit=4     ! output unit assigned to: - abundance results
+c      unit=7     ! output unit assigned to: - file with opacity=1 vs wavelength
+c      unit=8     ! input unit assigned to:  - longitude-pressure-temperature file (lpt)
+c      unit=9     ! output unit assigned to: - file with chemical cooling/heating rate
+c      unit=11-19 ! output units assigned to:- solid body rotation abundance results

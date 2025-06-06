@@ -1,0 +1,21 @@
+1.0e0  1.0e0                           ! planet radius [R_Earth], reference pressure [bar]; exoplanet.eu
+1.0e0                                  ! planet mass [M_Earth]; exoplanet.eu
+35.7e0                                 ! planet internal temperature [K]; Davies & Davies (2010), Solid Earth, 1, 5 (heat flux = 47 TW)
+0.297e0  0.984e0                       ! planet surface albedo and emissivity; Goode et al (2001), Geophys Res Lett, 28, 1671; Konda et al (1994), J Oceanography, 50, 17
+0.5e0                                  ! planet heat redistribution factor (1/2: planet-wide redistribution, 1: dayside hemisphere redistribution, no day-night heat flow)
+48.0e0                                 ! zenith angle [deg]; Cronin et al 2014, J Atmos Sci, 71, 2994 (see appendix C of Tsai et al 2021, ApJ, 923, 264)
+1.0e0                                  ! star radius [R_Sun]; exoplanet.eu
+1.0e0                                  ! orbital distance [au]; exoplanet.eu
+sun.star  5772.0e0                     ! star spectrum file (if None blackbody), Teff [K]; exoplanet.eu
+1.0e0  1.0e-6  70                      ! bottom/top pressure [bar], No heights
+species_init_Earth.spec  1             ! species file, use or not (0/1) chemical equilibrium
+species.therm                          ! therm file
+network.reac                           ! reaction file
+None                                   ! eddy diffusion coefficient profile file (if None default=Moses+22)
+1  1  1  1                             ! deactivate/activate (0/1) solve initial temperature, self-consistent temperature, diffusion, and photochemistry
+None                                   ! initial (z,p,T,composition) file
+'../../data/'                          ! path to data
+'ktable/'                              ! directory with k-tables
+'chemistry/'                           ! directory with reaction network and therm file
+'photoreac/'                           ! directory with photo cross sections
+'stars/'                               ! directory with stellar spectra

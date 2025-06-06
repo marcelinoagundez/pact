@@ -1,0 +1,21 @@
+12.902e0  1.0e0                        ! planet radius [R_Earth], reference pressure [bar]; exoplanet.eu
+371.9e0                                ! planet mass [M_Earth]; exoplanet.eu
+300.0e0                                ! planet internal temperature [K]
+0.0e0  1.0e0                           ! planet surface albedo and emissivity
+0.5e0                                  ! planet heat redistribution factor (1/2: planet-wide redistribution, 1: dayside hemisphere redistribution, no day-night heat flow)
+48.0e0                                 ! zenith angle [deg]; Cronin et al 2014, J Atmos Sci, 71, 2994 (see appendix C of Tsai et al 2021, ApJ, 923, 264)
+0.805e0                                ! star radius [R_Sun]; exoplanet.eu
+0.031e0                                ! orbital distance [au]; exoplanet.eu
+hd189733.star  4875.0e0                ! star spectrum file (if None blackbody), Teff [K]; exoplanet.eu
+1.0e2  1.0e-8  70                      ! bottom/top pressure [bar], No heights
+species_solar.spec  0                  ! species file, use or not (0/1) chemical equilibrium
+species.therm                          ! therm file
+network.reac                           ! reaction file
+None                                   ! eddy diffusion coefficient profile file (if None default=Moses+22)
+1  1  1  1                             ! deactivate/activate (0/1) solve initial temperature, self-consistent temperature, diffusion, and photochemistry
+None                                   ! initial (z,p,T,composition) file
+'../../data/'                          ! path to data
+'ktable/'                              ! directory with k-tables
+'chemistry/'                           ! directory with reaction network and therm file
+'photoreac/'                           ! directory with photo cross sections
+'stars/'                               ! directory with stellar spectra
