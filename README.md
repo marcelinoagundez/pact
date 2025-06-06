@@ -5,7 +5,9 @@
    - disequilibrium chemical composition (including thermochemical kinetics, photochemistry, and vertical mixing)
   in a planetary atmosphere
 
-### If you use PACT for your work, I would appreciate if you cite the paper Agundez 2025, A&A, in press
+### If you use PACT for your work, I would appreciate if you cite the paper
+   - Agúndez 2025, A&A, in press
+
 ### Inquiries can be sent to marcelino.agundez@csic.es
 
 ### Compilation:
