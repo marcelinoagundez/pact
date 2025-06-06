@@ -35,7 +35,7 @@
 
 ### Usage:
 
-  Download the directory `data` as a compressed file from [here](https://saco.csic.es/s/TsR67qdyPziEzXL) and put it in the main `pact` folder.
+  Download the directory `data` as a compressed file from [here](https://saco.csic.es/s/TsR67qdyPziEzXL), uncompress it, and put it in the `pact-main` folder.
   In the directory `data` you have sub-directories with different type of data.
   Most of these data are common to different PACT models and thus are stored once to avoid file duplication.
 
