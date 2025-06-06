@@ -22,11 +22,12 @@
   Other fortran compilers such as ifort may work but they have not been tested.
   To compile simply type:
 
-`
-$ cd src
-$ make clean       (only needed if the code has been compiled previously)
-$ make
-`
+
+`$ cd src`
+
+`$ make clean`       (only needed if the code has been compiled previously)
+
+`$ make`
 
   This should have created a binary file named `pact`.
   It is convenient to move the binary file to the bin folder of your system where binaries are located.
@@ -47,6 +48,6 @@ $ make
   In the directory `examples` you have various sub-directories with the names of different planets.
   These sub-directories contain specific input files for each particular PACT model.
   To run a PACT model of a given planet, move to corresponding sub-directory and simply type:
-`
-$ pact             (assuming you have the binary in the bin folder of your system)
-`
+
+`$ pact`             (assuming you have the binary in the bin folder of your system)
+
